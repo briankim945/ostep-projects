@@ -100,7 +100,6 @@ int main(int argc, char *argv[])
         long limit = sysconf(_SC_LINE_MAX);
         line_max = (limit < 0 || limit > MYLIMIT) ? MYLIMIT : (int)limit;
     }
-    line_max += 1;
 
     // Read lines
     // line_max + 1 leaves room for the null byte added by fgets().
