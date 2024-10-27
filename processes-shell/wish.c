@@ -9,8 +9,6 @@
 
 #define MYLIMIT 16384
 
-int handle_command(char *line);
-
 int main(int argc, char *argv[])
 {
     char *line, *dir_chunk, *arg_chunk, *word, *command;
@@ -110,12 +108,11 @@ int main(int argc, char *argv[])
                         {
                             if (*word != '\0')
                             {
-                                // printf("%s\n", word);
                                 if (command == NULL)
                                 {
                                     command = word;
                                     // check for built-in commands
-                                    if ((strcmp(command, "exit") == 0) || (strcmp(command, "path") == 0) || (strcmp(command, "cd") == 0) || (strcmp(command, "print") == 0))
+                                    if ((strcmp(command, "exit") == 0) || (strcmp(command, "path") == 0) || (strcmp(command, "cd") == 0))
                                         builtin_index = command_index;
                                     // copying into command lists
                                     strcpy(command_list[command_index], command);
@@ -145,11 +142,8 @@ int main(int argc, char *argv[])
                         redirect_count++;
                     }
                 }
-                // printf("%s\n", command_list[command_index - 1]);
             }
         }
-
-        // printf("HERE %i\n", builtin_index);
 
         if (builtin_index > -1)
         {
@@ -175,10 +169,7 @@ int main(int argc, char *argv[])
                 {
                     for (i = 1; i < arg_counts[builtin_index]; i++)
                     {
-                        // printf("%s\n", arg_list[builtin_index][i]);
-                        // strncpy(paths[path_count], (const char *)arg_list[builtin_index][i], strlen(arg_list[builtin_index][i]));
                         paths[path_count] = strndup(arg_list[builtin_index][i], strlen(arg_list[builtin_index][i]));
-                        // printf("%s\n", paths[path_count]);
                         path_count++;
                     }
                 }
@@ -197,37 +188,24 @@ int main(int argc, char *argv[])
                     write(STDERR_FILENO, error_message, strlen(error_message));
                 }
             }
-            else if (strcmp(command_list[builtin_index], "print") == 0)
-            {
-                for (i = 0; i < path_count; i++)
-                {
-                    printf("%s\n", paths[i]);
-                }
-            }
         }
         else // handle any non-hardcoded commands
         {
             // check that arguments and redirects are valid
             for (j = 0; j < command_index; j++)
             {
-                // printf("j: %i\n", j);
-                // printf("redirect[%i]: %i\n", j, redirect[j]);
                 for (i = 0; i < path_count; i++) // search saved paths
                 {
-                    // printf("path_count: %i\n", j, redirect[j]);
                     if (strcmp(paths[i], command_list[j]) == 0) // check if directly exists
                         break;
 
                     char *tmp_word = strdup(paths[i]); // check if within directory
                     strcat(tmp_word, "/");
                     strcat(tmp_word, command_list[j]);
-                    // printf("tmp_word: %s\n", tmp_word);
-                    // printf("%i\n", access(tmp_word, X_OK));
 
                     if (access(tmp_word, X_OK) > -1)
                     {
                         strcpy(command_list[j], strdup(tmp_word));
-                        // printf("command_list[j]: %s\n", command_list[j]);
                         break;
                     }
                 }
@@ -245,17 +223,13 @@ int main(int argc, char *argv[])
                 }
             }
 
-            // printf("%i %i %i\n", j, path_count, command_index);
-
             if (j >= command_index) // check that all paths exist
             {
                 // status = 0;
 
                 for (i = 0; i < command_index; i++)
                 {
-                    // printf("%i\n", i);
                     rc_list[i] = fork();
-                    // printf("%i\n", rc_list[i]);
 
                     if (rc_list[i] < 0)
                     {
@@ -267,32 +241,22 @@ int main(int argc, char *argv[])
                     {
                         // child (new process)
                         // now exec command
-                        // printf("Within child %i\n", rc_list[i]);
 
                         char *cur_args[arg_counts[i]];
                         char *command;
                         j = 0;
                         while (arg_list[i][j][0] != '\0')
                         {
-                            // printf("%i\n", (int)strlen(arg_list[i][j]));
-                            // strncpy(cur_args[j], arg_list[i][j], (int)strlen(arg_list[i][j]) + 1);
-                            // cur_args[j] = strdup(arg_list[i][j]);
                             cur_args[j] = strndup(arg_list[i][j], (int)strlen(arg_list[i][j]));
-                            // cur_args[j][(int)strlen(arg_list[i][j])] = '\0';
-                            // printf("%s\n", cur_args[j]);
                             j++;
                         }
                         cur_args[j] = NULL;
 
                         command = strdup(command_list[i]);
-                        // printf("command: %s\n", command);
-
-                        // printf("redirect[i]: %i\n", redirect[i]);
 
                         // handle redirect
                         if (redirect[i] && (output_count[i] == 1))
                         {
-                            // printf("redirect[i]: %i\n", redirect[i]);
                             int fd = open(files[i], O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 
                             dup2(fd, 1); // redirect stdout to file
@@ -303,50 +267,8 @@ int main(int argc, char *argv[])
 
                         execv(command, cur_args);
                         exit(1);
-                        // printf("%i\n", execv(command, cur_args)); // runs path
-                        // printf("Oh dear, something went wrong with execv()! %s\n", strerror(errno));
-
-                        // printf("this shouldn't print out");
-
-                        // // child (new process)
-                        // // now exec "wc"...
-                        // char *path;
-                        // char *myargs[2];
-                        // char *envp[2];
-
-                        // path = strdup("/bin/ls");
-
-                        // myargs[0] = strdup("ls"); // program: "ls" (list files)
-                        // myargs[1] = NULL;         // marks end of array
-
-                        // envp[0] = "environment";
-                        // envp[1] = NULL;
-
-                        // execv(path, myargs); // runs /bin/lsz
-
-                        // printf("this shouldn't print out");
                     }
-                    // else
-                    // {
-                    //     // parent goes down this path (original process)
-                    //     wpid = wait(NULL);
-                    //     if (wpid < 0)
-                    //     {
-                    //         write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
-                    //     }
-                    //     // printf("hello, I am parent of %d (wc:%d) (pid:%d)\n",
-                    //     //        rc_list[i], wpid, (int)getpid());
-                    // }
                 }
-
-                // parent goes down this path (original process)
-                // int wc = wait(NULL);
-                // if (wc == -1)
-                //     write(STDERR_FILENO, error_message, strlen(error_message));
-                // printf("hello, I am parent of %d (wc:%d) (pid:%d)\n",
-                //        rc, wc, (int)getpid());
-                // while ((wpid = wait(&status)) > 0)
-                //     ;
 
                 for (i = 0; i < command_index; i++)
                 {
@@ -354,12 +276,6 @@ int main(int argc, char *argv[])
                     {
                         while ((wpid = wait(NULL)) > 0)
                             ;
-                        // printf("%i\n", wpid);
-                        // printf("Oh dear, something went wrong with read()! %s\n", strerror(errno));
-                        // if (wpid < 0)
-                        // {
-                        //     write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
-                        // }
                     }
                 }
             }
@@ -371,45 +287,5 @@ int main(int argc, char *argv[])
     free(line);
     free(arg_chunk);
 
-    return 0;
-}
-
-int handle_command(char *line)
-{
-    printf("hello world (pid:%d)\n", (int)getpid());
-    int rc = fork();
-    if (rc < 0)
-    {
-        // fork failed; exit
-        fprintf(stderr, "fork failed\n");
-        exit(1);
-    }
-    else if (rc == 0)
-    {
-        // child (new process)
-        // now exec "wc"...
-        char *path;
-        char *myargs[2];
-        char *envp[2];
-
-        path = strdup("/bin/ls");
-
-        myargs[0] = strdup("ls"); // program: "ls" (list files)
-        myargs[1] = NULL;         // marks end of array
-
-        envp[0] = "environment";
-        envp[1] = NULL;
-
-        execv(path, myargs); // runs /bin/lsz
-
-        printf("this shouldn't print out");
-    }
-    else
-    {
-        // parent goes down this path (original process)
-        int wc = wait(NULL);
-        printf("hello, I am parent of %d (wc:%d) (pid:%d)\n",
-               rc, wc, (int)getpid());
-    }
     return 0;
 }
